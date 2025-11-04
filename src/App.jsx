@@ -1,52 +1,111 @@
-import React, { useRef } from 'react';
-import './App.css';
+import React, { useEffect, useRef, useState } from 'react';
 
 function setTilt(card, x, y) {
   card.style.transform = `rotateY(${x}deg) rotateX(${-y}deg)`;
 }
 
-function App() {
+export default function TiltCard() {
   const cardRef = useRef(null);
+  const [permissionGranted, setPermissionGranted] = useState(false);
 
-  // Mouse movement handler
+  // Request permission for device orientation on iOS (must be triggered by user gesture)
+  const requestPermissionAndEnable = () => {
+    if (
+      typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function'
+    ) {
+      DeviceOrientationEvent.requestPermission()
+        .then(response => {
+          if (response === 'granted') {
+            setPermissionGranted(true);
+            window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+          } else {
+            alert('Permission denied for device orientation.');
+          }
+        })
+        .catch(console.error);
+    } else {
+      // For other devices/browsers where permission not needed
+      setPermissionGranted(true);
+      window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+    }
+  };
+
+  const handleDeviceOrientation = (event) => {
+    if (!cardRef.current) return;
+    const maxAngle = 30;
+    const x = Math.max(Math.min(event.gamma, maxAngle), -maxAngle); // left-right
+    const y = Math.max(Math.min(event.beta - 90, maxAngle), -maxAngle); // front-back offset for upright portrait
+    setTilt(cardRef.current, x, y);
+  };
+
   const handleMouseMove = (e) => {
+    if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width - 0.5) * 30;
     const y = ((e.clientY - rect.top) / rect.height - 0.5) * 30;
     setTilt(cardRef.current, x, y);
   };
 
-  const handleMouseLeave = () => setTilt(cardRef.current, 0, 0);
+  const handleMouseLeave = () => {
+    if (!cardRef.current) return;
+    setTilt(cardRef.current, 0, 0);
+  };
 
-  // Device tilt (mobile)
-  React.useEffect(() => {
-    if ('DeviceOrientationEvent' in window) {
-      const onTilt = (e) => {
-        const x = Math.max(Math.min(e.gamma, 30), -30);
-        const y = Math.max(Math.min(e.beta - 90, 30), -30);
-        setTilt(cardRef.current, x, y);
-      };
-      window.addEventListener('deviceorientation', onTilt, true);
-      return () => window.removeEventListener('deviceorientation', onTilt);
-    }
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('deviceorientation', handleDeviceOrientation);
+    };
   }, []);
 
   return (
-    <div className="container">
-      <div
-        ref={cardRef}
-        className="card"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-      >
-        <h1>John & Jane</h1>
-        <p>Together with their families,<br/>invite you to celebrate their wedding.</p>
-        <p className="date">November 14, 2025</p>
-        <p>Venue: Rosewood Hall</p>
-        <p>RSVP by November 7</p>
-      </div>
+    <div style={{
+      display: 'flex', justifyContent: 'center', alignItems: 'center',
+      height: '100vh', background: '#f7d9e3'
+    }}>
+      {!permissionGranted && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function' ? (
+        <button
+          onClick={requestPermissionAndEnable}
+          style={{
+            padding: '1em 2em', fontSize: '1.2em', borderRadius: '12px',
+            cursor: 'pointer', backgroundColor: '#c72a70', color: 'white',
+            border: 'none'
+          }}
+        >
+          Enable Phone Tilt
+        </button>
+      ) : (
+        <div
+          ref={cardRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            width: 350,
+            height: 500,
+            backgroundColor: 'white',
+            borderRadius: 30,
+            boxShadow: '0 12px 30px rgba(100,10,50,0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            transition: 'transform 0.5s cubic-bezier(0.20, 0.80, 0.30, 1)',
+            willChange: 'transform',
+            textAlign: 'center',
+            userSelect: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <h1 style={{ color: '#c72a70', fontFamily: "'Pacifico', cursive", margin: '20px 0' }}>John & Jane</h1>
+          <p style={{ fontFamily: "'Open Sans', sans-serif", color: '#444', margin: '20px 0' }}>
+            Together with their families,<br />
+            invite you to celebrate their wedding.
+          </p>
+          <p style={{ fontSize: 20, color: '#7c3e66', marginTop: 40 }}>November 14, 2025</p>
+          <p style={{ fontFamily: "'Open Sans', sans-serif", color: '#444', margin: '20px 0' }}>Venue: Rosewood Hall</p>
+          <p style={{ fontFamily: "'Open Sans', sans-serif", color: '#444', margin: '20px 0' }}>RSVP by November 7</p>
+        </div>
+      )}
     </div>
   );
 }
-
-export default App;
