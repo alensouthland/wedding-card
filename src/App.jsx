@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-function setTilt(card, x, y) {
-  card.style.transform = `rotateY(${x}deg) rotateX(${-y}deg)`;
+function setTilt(card, x, y, z) {
+  card.style.transform = `rotateX(${-y}deg) rotateY(${x}deg) rotateZ(${z}deg)`;
 }
 
 export default function TiltCard() {
   const cardRef = useRef(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const resetTimeout = useRef(null);
 
-  // Request permission for device orientation on iOS (must be triggered by user gesture)
+  const intensity = 0.4;
+  const maxAngle = 15;
+
   const requestPermissionAndEnable = () => {
     if (
       typeof DeviceOrientationEvent !== 'undefined' &&
@@ -25,46 +28,79 @@ export default function TiltCard() {
         })
         .catch(console.error);
     } else {
-      // For other devices/browsers where permission not needed
       setPermissionGranted(true);
       window.addEventListener('deviceorientation', handleDeviceOrientation, true);
     }
   };
 
   const handleDeviceOrientation = (event) => {
-  if (!cardRef.current) return;
+    if (!cardRef.current) return;
 
-  // Reduce intensity by scaling factor (e.g. 0.5)
-  const intensity = 0.5;
+    // Clear previous reset timer
+    if (resetTimeout.current) clearTimeout(resetTimeout.current);
 
-  // Offset beta by 90 (upright orientation) and clamp angles for smoothness
-  const xRaw = event.gamma || 0; // left-right tilt
-  const yRaw = (event.beta || 0) - 90; // front-back tilt offset
+    let xRaw = event.gamma || 0;            // left-right tilt
+    let yRaw = (event.beta || 0) - 90;      // front-back tilt offset upright
+    let zRaw = event.alpha || 0;             // z-axis rotation compass heading
 
-  const maxAngle = 15; // reduce max tilt max range to 15 degrees
+    // Scale and clamp rotations
+    const x = Math.max(Math.min(xRaw * intensity, maxAngle), -maxAngle);
+    const y = Math.max(Math.min(yRaw * intensity, maxAngle), -maxAngle);
+    const z = Math.max(Math.min(zRaw * intensity, maxAngle), -maxAngle);
 
-  const x = Math.max(Math.min(xRaw * intensity, maxAngle), -maxAngle);
-  const y = Math.max(Math.min(yRaw * intensity, maxAngle), -maxAngle);
+    setTilt(cardRef.current, x, y, z);
 
-  setTilt(cardRef.current, x, y);
-};
+    // Reset card upright after 2 seconds of last tilt input
+    resetTimeout.current = setTimeout(() => {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 1.5s ease-in-out';
+        setTilt(cardRef.current, 0, 0, 0);
+        // Remove transition after done to keep snappy response
+        setTimeout(() => {
+          if (cardRef.current) cardRef.current.style.transition = '';
+        }, 1500);
+      }
+    }, 2000);
+  };
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
+    // Clear reset timeout on mouse move
+    if (resetTimeout.current) clearTimeout(resetTimeout.current);
+
     const rect = cardRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 30;
-    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 30;
-    setTilt(cardRef.current, x, y);
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * maxAngle;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * maxAngle;
+    const z = 0;
+
+    setTilt(cardRef.current, x, y, z);
+
+    resetTimeout.current = setTimeout(() => {
+      if (cardRef.current) {
+        cardRef.current.style.transition = 'transform 1.5s ease-in-out';
+        setTilt(cardRef.current, 0, 0, 0);
+        setTimeout(() => {
+          if (cardRef.current) cardRef.current.style.transition = '';
+        }, 1500);
+      }
+    }, 2000);
   };
 
   const handleMouseLeave = () => {
     if (!cardRef.current) return;
-    setTilt(cardRef.current, 0, 0);
+    if (resetTimeout.current) clearTimeout(resetTimeout.current);
+
+    cardRef.current.style.transition = 'transform 1.5s ease-in-out';
+    setTilt(cardRef.current, 0, 0, 0);
+    setTimeout(() => {
+      if (cardRef.current) cardRef.current.style.transition = '';
+    }, 1500);
   };
 
   useEffect(() => {
     return () => {
       window.removeEventListener('deviceorientation', handleDeviceOrientation);
+      if (resetTimeout.current) clearTimeout(resetTimeout.current);
     };
   }, []);
 
@@ -91,7 +127,9 @@ export default function TiltCard() {
           onMouseLeave={handleMouseLeave}
           style={{
             width: '80%',
-            height: 500,
+            height: '70%',
+            maxWidth: '350px',
+            maxHeight: '500px',
             backgroundColor: 'white',
             borderRadius: 30,
             boxShadow: '0 12px 30px rgba(100,10,50,0.2)',
@@ -99,11 +137,10 @@ export default function TiltCard() {
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
-            transition: 'transform 0.5s cubic-bezier(0.20, 0.80, 0.30, 1)',
-            willChange: 'transform',
             textAlign: 'center',
             userSelect: 'none',
             cursor: 'pointer',
+            willChange: 'transform',
           }}
         >
           <h1 style={{ color: '#c72a70', fontFamily: "'Pacifico', cursive", margin: '20px 0' }}>John & Jane</h1>
