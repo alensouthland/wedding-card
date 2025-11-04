@@ -80,7 +80,7 @@ export default function TiltCard() {
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           style={{
-            width: 350,
+            width: '80%',
             height: 500,
             backgroundColor: 'white',
             borderRadius: 30,
