@@ -1,0 +1,41 @@
+body, .container {
+  background: #f7d9e3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+}
+
+.card {
+  width: 350px;
+  height: 500px;
+  background: #fff;
+  border-radius: 30px;
+  box-shadow: 0 12px 30px rgba(100,10,50,0.2);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.5s cubic-bezier(0.20, 0.80, 0.30, 1);
+  will-change: transform;
+  text-align: center;
+}
+
+.card h1 {
+  color: #c72a70;
+  font-family: 'Pacifico', cursive;
+  margin: 20px 0;
+}
+
+.card p {
+  font-family: 'Open Sans', sans-serif;
+  color: #444;
+  margin: 20px 0;
+}
+
+.card .date {
+  font-size: 20px;
+  color: #7c3e66;
+  margin-top: 40px;
+}
