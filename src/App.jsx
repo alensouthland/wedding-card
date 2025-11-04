@@ -32,12 +32,22 @@ export default function TiltCard() {
   };
 
   const handleDeviceOrientation = (event) => {
-    if (!cardRef.current) return;
-    const maxAngle = 30;
-    const x = Math.max(Math.min(event.gamma, maxAngle), -maxAngle); // left-right
-    const y = Math.max(Math.min(event.beta - 90, maxAngle), -maxAngle); // front-back offset for upright portrait
-    setTilt(cardRef.current, x, y);
-  };
+  if (!cardRef.current) return;
+
+  // Reduce intensity by scaling factor (e.g. 0.5)
+  const intensity = 0.5;
+
+  // Offset beta by 90 (upright orientation) and clamp angles for smoothness
+  const xRaw = event.gamma || 0; // left-right tilt
+  const yRaw = (event.beta || 0) - 90; // front-back tilt offset
+
+  const maxAngle = 15; // reduce max tilt max range to 15 degrees
+
+  const x = Math.max(Math.min(xRaw * intensity, maxAngle), -maxAngle);
+  const y = Math.max(Math.min(yRaw * intensity, maxAngle), -maxAngle);
+
+  setTilt(cardRef.current, x, y);
+};
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
